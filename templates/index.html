@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Photometer Web</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      color: #333;
+    }
+    .upload-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: inline-block;
+    }
+    input[type="file"] {
+      margin: 15px 0;
+    }
+    img {
+      max-width: 300px;
+      margin-top: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #0069d9;
+    }
+  </style>
+</head>
+<body>
+  <h1>📷 Photometer Simulator</h1>
+  <div class="upload-box">
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" id="fileInput" name="file" accept="image/*" required>
+      <br>
+      <button type="submit">วัดค่า mg/L</button>
+    </form>
+    <img id="preview" src="#" alt="Preview" style="display:none;">
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const preview = document.getElementById("preview");
+    const form = document.getElementById("uploadForm");
+    const resultDiv = document.getElementById("result");
+
+    // แสดง preview ของภาพ
+    fileInput.addEventListener("change", function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          preview.src = e.target.result;
+          preview.style.display = "block";
+        }
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // ส่งไฟล์ไป Flask
+    form.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      resultDiv.textContent = "กำลังประมวลผล...";
+
+      try {
+        const response = await fetch("/predict", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          resultDiv.textContent = "ผลการวัด: " + data.concentration.toFixed(2) + " mg/L";
+        } else {
+          resultDiv.textContent = "เกิดข้อผิดพลาด: " + data.error;
+        }
+
+      } catch (err) {
+        resultDiv.textContent = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+      }
+    });
+  </script>
+</body>
+</html>
