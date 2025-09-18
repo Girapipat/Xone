@@ -1,97 +1,161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Photometer Web</title>
+  <title>โปรแกรมจำลอง Photometer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f8f9fa;
-      text-align: center;
-      padding: 40px;
+      font-family: 'Roboto', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
+
     h1 {
+      margin-top: 40px;
       color: #333;
     }
-    .upload-box {
+
+    #dropZone {
+      border: 2px dashed #4a90e2;
+      border-radius: 10px;
+      width: 350px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin: 20px 0;
       background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      display: inline-block;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s;
     }
-    input[type="file"] {
-      margin: 15px 0;
+
+    #dropZone.hover {
+      background: #eaf2ff;
+      border-color: #1c6ed1;
     }
-    img {
+
+    #preview {
       max-width: 300px;
-      margin-top: 15px;
+      max-height: 300px;
+      margin: 10px 0;
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
-    .result {
+
+    button {
+      background-color: #4a90e2;
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #1c6ed1;
+    }
+
+    #result {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      width: 350px;
+      text-align: left;
+      font-size: 16px;
+      line-height: 1.6;
       margin-top: 20px;
-      font-size: 1.2em;
-      font-weight: bold;
-      color: #0069d9;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
-  <h1>📷 Photometer จำลอง</h1>
-  <div class="upload-box">
-    <form id="uploadForm" enctype="multipart/form-data">
-      <input type="file" id="fileInput" name="file" accept="image/*" required>
-      <br>
-      <button type="submit">วัดค่า</button>
-    </form>
-    <img id="preview" src="#" alt="Preview" style="display:none;">
-    <div class="result" id="result"></div>
-  </div>
+  <h1>โปรแกรมจำลอง Photometer</h1>
+
+  <div id="dropZone">ลากแล้วปล่อยภาพตัวอย่างที่นี่<br>หรือคลิกเพื่อเลือกไฟล์</div>
+  <input type="file" id="fileInput" style="display:none;">
+  <img id="preview" style="display:none;">
+
+  <button id="uploadBtn">อัปโหลดและวิเคราะห์</button>
+
+  <h3>ผลลัพธ์:</h3>
+  <div id="result">ยังไม่มีข้อมูล</div>
 
   <script>
-    const fileInput = document.getElementById("fileInput");
-    const preview = document.getElementById("preview");
-    const form = document.getElementById("uploadForm");
-    const resultDiv = document.getElementById("result");
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const result = document.getElementById('result');
 
-    // แสดง preview ของภาพ
-    fileInput.addEventListener("change", function() {
-      const file = this.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          preview.src = e.target.result;
-          preview.style.display = "block";
-        }
-        reader.readAsDataURL(file);
+    let file;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('hover');
+    });
+
+    dropZone.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dropZone.classList.remove('hover');
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('hover');
+      file = e.dataTransfer.files[0];
+      if(file){
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
       }
     });
 
-    // ส่งไฟล์ไป Flask
-    form.addEventListener("submit", async function(e) {
-      e.preventDefault();
-      const formData = new FormData(form);
-
-      resultDiv.textContent = "กำลังประมวลผล...";
-
-      try {
-        const response = await fetch("/predict", {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          resultDiv.textContent = "ผลการวัด: " + data.concentration.toFixed(2) + " mg/L";
-        } else {
-          resultDiv.textContent = "เกิดข้อผิดพลาด: " + data.error;
-        }
-
-      } catch (err) {
-        resultDiv.textContent = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+    fileInput.addEventListener('change', e => {
+      file = e.target.files[0];
+      if(file){
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
       }
+    });
+
+    uploadBtn.addEventListener('click', () => {
+      if(!file) return alert("กรุณาเลือกหรือวางภาพตัวอย่างก่อน");
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      fetch('/upload', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+          if(data.error){
+            result.textContent = "เกิดข้อผิดพลาด: " + data.error;
+          } else {
+            const intensity_sample = data.intensity_sample ?? 0;
+            const reference_intensity = data.reference_intensity ?? 0;
+            const absorbance = data.absorbance ?? 0;
+            const concentration = data.concentration ?? 0;
+
+            result.innerHTML = `
+              <strong>ความเข้มของแสงอ้างอิง (I0):</strong> ${reference_intensity.toFixed(2)}<br>
+              <strong>ความเข้มของแสงตัวอย่าง (I):</strong> ${intensity_sample.toFixed(2)}<br>
+              <strong>การดูดกลืนแสง (A):</strong> ${absorbance.toFixed(4)}<br>
+              <strong>ความเข้มข้นของสาร (c):</strong> ${concentration.toFixed(4)}
+            `;
+          }
+        })
+        .catch(err => {
+          result.textContent = "เกิดข้อผิดพลาด: " + err;
+        });
     });
   </script>
 </body>

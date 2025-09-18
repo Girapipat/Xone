@@ -1,42 +1,52 @@
-import os
-import numpy as np
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, render_template, jsonify
 from PIL import Image
+import numpy as np
 
 app = Flask(__name__)
 
-# ฟังก์ชันคำนวณความเข้มข้น (จำลอง photometer)
-def calculate_concentration(image_path):
-    img = Image.open(image_path).convert("L")  # แปลงเป็น grayscale
-    arr = np.array(img)
-    mean_intensity = np.mean(arr)  # ความสว่างเฉลี่ย
+# ค่าการดูดกลืนและความยาวหลอด (ตัวอย่าง)
+epsilon = 0.02  # ปรับตามสารจริง
+l = 1.0         # cm
 
-    # แปลง intensity (0-255) → mg/L (สมมุติ)
-    concentration = (255 - mean_intensity) / 255 * 100  
-    return concentration
+def calculate_intensity(img):
+    """คืนค่า intensity สูงสุดและค่าเฉลี่ยของภาพ"""
+    gray = img.convert('L')
+    arr = np.array(gray)
+    I0 = arr.max()       # ใช้ค่าพิกเซลสูงสุดแทน reference
+    I = arr.mean()       # intensity เฉลี่ย
+    return I0, I
 
-@app.route("/")
+def calculate_absorbance(I0, I):
+    if I <= 0: I = 0.01  # ป้องกัน log(0)
+    return np.log10(I0 / I)
+
+def calculate_concentration(A, epsilon):
+    return A / (epsilon * l)
+
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "file" not in request.files:
-        return jsonify({"success": False, "error": "No file uploaded"})
-
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"success": False, "error": "No file selected"})
-
-    filepath = os.path.join("uploads", file.filename)
-    os.makedirs("uploads", exist_ok=True)
-    file.save(filepath)
+@app.route('/upload', methods=['POST'])
+def upload():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
 
     try:
-        concentration = calculate_concentration(filepath)
-        return jsonify({"success": True, "concentration": float(concentration)})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        file = request.files['file']
+        img = Image.open(file)
+        I0, I = calculate_intensity(img)
+        A = calculate_absorbance(I0, I)
+        c = calculate_concentration(A, epsilon)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+        return jsonify({
+            'intensity_sample': float(I),
+            'reference_intensity': float(I0),
+            'absorbance': float(A),
+            'concentration': float(c)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
