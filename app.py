@@ -1,52 +1,35 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, jsonify, render_template
 from PIL import Image
 import numpy as np
 
 app = Flask(__name__)
 
-# ค่าการดูดกลืนและความยาวหลอด (ตัวอย่าง)
-epsilon = 0.02  # ปรับตามสารจริง
-l = 1.0         # cm
-
-def calculate_intensity(img):
-    """คืนค่า intensity สูงสุดและค่าเฉลี่ยของภาพ"""
-    gray = img.convert('L')
-    arr = np.array(gray)
-    I0 = arr.max()       # ใช้ค่าพิกเซลสูงสุดแทน reference
-    I = arr.mean()       # intensity เฉลี่ย
-    return I0, I
-
-def calculate_absorbance(I0, I):
-    if I <= 0: I = 0.01  # ป้องกัน log(0)
-    return np.log10(I0 / I)
-
-def calculate_concentration(A, epsilon):
-    return A / (epsilon * l)
-
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    if "file" not in request.files:
+        return jsonify({"error": "ไม่มีไฟล์อัปโหลด"}), 400
+    
+    file = request.files["file"]
+    img = Image.open(file.stream).convert("L")  # แปลงเป็น grayscale
+    
+    # คำนวณค่า intensity เฉลี่ย
+    intensity = np.mean(np.array(img))  
+    
+    # กฎของเบียร์-แลมเบิร์ต (Beer-Lambert Law)
+    I0 = 255.0  # ความเข้มแสงเริ่มต้น (สมมติเป็นขาวสว่างสุด)
+    I = max(intensity, 1)  # ป้องกันหาร 0
+    absorbance = np.log10(I0 / I)
+    concentration = absorbance * 10  # factor สมมติ
 
-    try:
-        file = request.files['file']
-        img = Image.open(file)
-        I0, I = calculate_intensity(img)
-        A = calculate_absorbance(I0, I)
-        c = calculate_concentration(A, epsilon)
+    return jsonify({
+        "intensity": round(float(intensity), 2),
+        "absorbance": round(float(absorbance), 4),
+        "concentration": round(float(concentration), 2)
+    })
 
-        return jsonify({
-            'intensity_sample': float(I),
-            'reference_intensity': float(I0),
-            'absorbance': float(A),
-            'concentration': float(c)
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

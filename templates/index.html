@@ -2,160 +2,132 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>โปรแกรมจำลอง Photometer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <title>โปรแกรมวิเคราะห์</title>
   <style>
     body {
-      font-family: 'Roboto', sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    h1 {
-      margin-top: 40px;
-      color: #333;
-    }
-
-    #dropZone {
-      border: 2px dashed #4a90e2;
-      border-radius: 10px;
-      width: 350px;
-      height: 180px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f3f4f6;
       text-align: center;
-      margin: 20px 0;
-      background: #fff;
-      cursor: pointer;
-      transition: background 0.3s, border-color 0.3s;
-    }
-
-    #dropZone.hover {
-      background: #eaf2ff;
-      border-color: #1c6ed1;
-    }
-
-    #preview {
-      max-width: 300px;
-      max-height: 300px;
-      margin: 10px 0;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    button {
-      background-color: #4a90e2;
-      color: #fff;
-      border: none;
-      padding: 12px 25px;
-      font-size: 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-
-    button:hover {
-      background-color: #1c6ed1;
-    }
-
-    #result {
-      background: #fff;
       padding: 20px;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    .upload-box {
+      border: 2px dashed #3b82f6;
       border-radius: 10px;
+      padding: 20px;
+      margin: 20px auto;
+      width: 300px;
+      background: white;
+      cursor: pointer;
+    }
+    .upload-box:hover {
+      background: #f0f9ff;
+    }
+    #preview {
+      margin-top: 15px;
+      max-width: 300px;
+      border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      width: 350px;
-      text-align: left;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
       font-size: 16px;
-      line-height: 1.6;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    #result {
       margin-top: 20px;
-      word-wrap: break-word;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: inline-block;
+      min-width: 280px;
+      text-align: left;
+    }
+    #error {
+      color: red;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>โปรแกรมจำลอง Photometer</h1>
+  <h1>โปรแกรมวิเคราะห์</h1>
 
-  <div id="dropZone">ลากแล้วปล่อยภาพตัวอย่างที่นี่<br>หรือคลิกเพื่อเลือกไฟล์</div>
-  <input type="file" id="fileInput" style="display:none;">
-  <img id="preview" style="display:none;">
+  <label for="fileInput" class="upload-box">
+    <p>ลากและปล่อยภาพตัวอย่างที่นี่<br>หรือคลิกเพื่อเลือกไฟล์</p>
+  </label>
+  <input type="file" id="fileInput" style="display: none;" accept="image/*">
+
+  <div>
+    <img id="preview" style="display:none;">
+  </div>
 
   <button id="uploadBtn">อัปโหลดและวิเคราะห์</button>
 
-  <h3>ผลลัพธ์:</h3>
-  <div id="result">ยังไม่มีข้อมูล</div>
+  <div id="result"></div>
+  <div id="error"></div>
 
   <script>
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const preview = document.getElementById('preview');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const result = document.getElementById('result');
+    const fileInput = document.getElementById("fileInput");
+    const preview = document.getElementById("preview");
+    const resultBox = document.getElementById("result");
+    const errorBox = document.getElementById("error");
 
-    let file;
-
-    dropZone.addEventListener('click', () => fileInput.click());
-
-    dropZone.addEventListener('dragover', e => {
-      e.preventDefault();
-      dropZone.classList.add('hover');
-    });
-
-    dropZone.addEventListener('dragleave', e => {
-      e.preventDefault();
-      dropZone.classList.remove('hover');
-    });
-
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.classList.remove('hover');
-      file = e.dataTransfer.files[0];
-      if(file){
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          preview.src = e.target.result;
+          preview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
       }
     });
 
-    fileInput.addEventListener('change', e => {
-      file = e.target.files[0];
-      if(file){
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
+    document.getElementById("uploadBtn").addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("กรุณาเลือกไฟล์ก่อน");
+        return;
       }
-    });
-
-    uploadBtn.addEventListener('click', () => {
-      if(!file) return alert("กรุณาเลือกหรือวางภาพตัวอย่างก่อน");
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
-      fetch('/upload', { method: 'POST', body: formData })
-        .then(res => res.json())
-        .then(data => {
-          if(data.error){
-            result.textContent = "เกิดข้อผิดพลาด: " + data.error;
-          } else {
-            const intensity_sample = data.intensity_sample ?? 0;
-            const reference_intensity = data.reference_intensity ?? 0;
-            const absorbance = data.absorbance ?? 0;
-            const concentration = data.concentration ?? 0;
-
-            result.innerHTML = `
-              <strong>ความเข้มของแสงอ้างอิง (I0):</strong> ${reference_intensity.toFixed(2)}<br>
-              <strong>ความเข้มของแสงตัวอย่าง (I):</strong> ${intensity_sample.toFixed(2)}<br>
-              <strong>การดูดกลืนแสง (A):</strong> ${absorbance.toFixed(4)}<br>
-              <strong>ความเข้มข้นของสาร (c):</strong> ${concentration.toFixed(4)}
-            `;
-          }
-        })
-        .catch(err => {
-          result.textContent = "เกิดข้อผิดพลาด: " + err;
+      try {
+        const response = await fetch("/analyze", {
+          method: "POST",
+          body: formData
         });
+
+        if (!response.ok) {
+          throw new Error("เกิดข้อผิดพลาดในการส่งไฟล์");
+        }
+
+        const result = await response.json();
+
+        resultBox.innerHTML = `
+          <b>ผลการวิเคราะห์:</b><br>
+          ความเข้มแสงเฉลี่ย: ${result.intensity}<br>
+          ค่าการดูดกลืนแสง (A): ${result.absorbance}<br>
+          ความเข้มข้นโดยประมาณ: ${result.concentration}
+        `;
+        errorBox.innerHTML = "";
+      } catch (err) {
+        errorBox.innerText = "เกิดข้อผิดพลาด: " + err;
+        resultBox.innerHTML = "";
+      }
     });
   </script>
 </body>
